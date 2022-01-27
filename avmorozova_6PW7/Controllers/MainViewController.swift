@@ -11,12 +11,6 @@ import MapKit
 
 class MainViewController: UIViewController {
     
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        
-        configureUI()
-    }
-    
     private let mapView: MKMapView = {
         let mapView = MKMapView()
         
@@ -46,6 +40,28 @@ class MainViewController: UIViewController {
         return buttonsStack
     }()
     
+    private let clearButton: MapButton = {
+        let clearButton = MapButton(frame: CGRect(x: 0, y: 0, width: 40, height: 20), text: "Clear", buttonColor: .black, textColor: .white)
+        
+        clearButton.addTarget(self, action: #selector(clearButtonWasPressed), for: .touchUpInside)
+        
+        clearButton.setTitleColor(.gray, for: .disabled)
+        clearButton.isEnabled = false
+        
+        return clearButton
+    }()
+    
+    private let goButton: MapButton = {
+        let goButton = MapButton(frame: CGRect(x: 0, y: 0, width: 40, height: 20), text: "Go", buttonColor: .blue, textColor: .white)
+        
+        goButton.addTarget(self, action: #selector(goButtonWasPressed), for: .touchUpInside)
+        
+        goButton.setTitleColor(.gray, for: .disabled)
+        goButton.isEnabled = false
+        
+        return goButton
+    }()
+    
     private let startLocation: UITextField = {
         let textField = UITextField()
         
@@ -67,6 +83,18 @@ class MainViewController: UIViewController {
         
         return textField
     }()
+    
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        configureUI()
+    }
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        self.view.endEditing(true)
+    }
+    
     
     private func configureTextField(textField: UITextField) {
         textField.backgroundColor = .black
@@ -100,8 +128,8 @@ class MainViewController: UIViewController {
     private func configureButtons() {
         buttonsStack.frame = CGRect(x: view.frame.size.width/2 - 100, y: view.frame.size.height-40, width: 200, height: 30)
         
-        buttonsStack.addArrangedSubview(MapButton(frame: CGRect(x: 0, y: 0, width: 40, height: 20), text: "Go", buttonColor: .blue, textColor: .white))
-        buttonsStack.addArrangedSubview(MapButton(frame: CGRect(x: 0, y: 0, width: 40, height: 20), text: "Clear", buttonColor: .black, textColor: .white))
+        buttonsStack.addArrangedSubview(clearButton)
+        buttonsStack.addArrangedSubview(goButton)
         
         view.addSubview(buttonsStack)
     }
@@ -123,14 +151,58 @@ class MainViewController: UIViewController {
         }
     }
     
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        self.view.endEditing(true)
+    private func clearMap() {
+        
+    }
+    
+    private func disableButton(button: UIButton) {
+        button.setTitleColor(.gray, for: .disabled)
+        button.isEnabled = false
+    }
+    
+    private func enableButton(button: UIButton) {
+        button.setTitleColor(.white, for: .disabled)
+        button.isEnabled = true
+    }
+    
+    
+    @objc func clearButtonWasPressed() {
+        startLocation.text = ""
+        endLocation.text = ""
+        
+        disableButton(button: clearButton)
+        disableButton(button: goButton)
+            
+        clearMap()
+    }
+    
+    @objc func goButtonWasPressed() {
+        
     }
 }
 
 extension MainViewController: UITextFieldDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         textField.resignFirstResponder()
+        
+        if (startLocation.hasText && endLocation.hasText) {
+            goButtonWasPressed()
+        }
+        
         return true
+    }
+    
+    func textFieldDidEndEditing(_ textField: UITextField) {
+        if (startLocation.hasText || endLocation.hasText) {
+            enableButton(button: clearButton)
+        } else {
+            disableButton(button: clearButton)
+        }
+        
+        if (startLocation.hasText && endLocation.hasText) {
+            enableButton(button: goButton)
+        } else {
+            disableButton(button: goButton)
+        }
     }
 }
