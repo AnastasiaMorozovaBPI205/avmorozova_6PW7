@@ -85,6 +85,10 @@ class MainViewController: UIViewController {
     }()
     
     
+    var coordinates: [CLLocationCoordinate2D] = []
+    var overlays: [MKOverlay] = []
+    
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -95,6 +99,14 @@ class MainViewController: UIViewController {
         self.view.endEditing(true)
     }
     
+    
+    private func configureUI() {
+        configureMap()
+        configureButtons()
+        configureTextField(textField: startLocation)
+        configureTextField(textField: endLocation)
+        configureTextStack()
+    }
     
     private func configureTextField(textField: UITextField) {
         textField.backgroundColor = .black
@@ -111,15 +123,8 @@ class MainViewController: UIViewController {
         textField.contentVerticalAlignment = .center
     }
     
-    private func configureUI() {
-        configureMap()
-        configureButtons()
-        configureTextField(textField: startLocation)
-        configureTextField(textField: endLocation)
-        configureTextStack()
-    }
-    
     private func configureMap() {
+        mapView.delegate = self
         mapView.frame = CGRect(x: 0, y: 0, width: view.frame.size.width, height: view.frame.size.height)
         mapView.center = view.center
         view.addSubview(mapView)
@@ -152,7 +157,14 @@ class MainViewController: UIViewController {
     }
     
     private func clearMap() {
+        if self.overlays.count  > 0 {
+            self.mapView.removeOverlays(self.overlays)
+            self.overlays = []
+        }
         
+        self.coordinates = []
+        
+        self.mapView.removeAnnotations(self.mapView.annotations)
     }
     
     private func disableButton(button: UIButton) {
@@ -165,6 +177,64 @@ class MainViewController: UIViewController {
         button.isEnabled = true
     }
     
+    private func buildPath() {
+        if self.coordinates.count <= 1 {
+            return
+        }
+        
+        let directionRequest = MKDirections.Request()
+        
+        directionRequest.source = MKMapItem(placemark: MKPlacemark(coordinate: self.coordinates.first!))
+        directionRequest.destination = MKMapItem(placemark: MKPlacemark(coordinate: self.coordinates.last!))
+        
+        directionRequest.transportType = .automobile
+        
+        MKDirections(request: directionRequest).calculate { (response, error) in
+            if error == nil {
+                if let overlay = response?.routes.first?.polyline {
+                    self.overlays.append(overlay)
+                    
+                    self.mapView.addOverlay(overlay)
+                    self.mapView.centerCoordinate = self.coordinates.last!
+                    self.mapView.setRegion(MKCoordinateRegion(center: self.coordinates.last!, span: MKCoordinateSpan(latitudeDelta: 0.9, longitudeDelta: 0.9)), animated: true)
+                }
+            } else {
+                print(String(describing: error))
+            }
+        }
+    }
+    
+    private func getCoordinateFrom(address: String, completion:
+                                    @escaping(_ coordinate: CLLocationCoordinate2D?, _ error: Error?)
+                                    -> () ) {
+        DispatchQueue.global(qos: .background).async {
+            CLGeocoder().geocodeAddressString(address) {
+                (placemarks, error) in
+                if let placemark = placemarks?.first {
+                    guard (placemark.location != nil) else {
+                        return
+                    }
+                    
+                    let pointCoordinates = placemark.location!.coordinate
+                    self.coordinates.append(pointCoordinates)
+                    
+                    let point = MKPointAnnotation()
+                    point.coordinate = pointCoordinates
+                    point.title = address
+                    if let country = placemark.country {
+                        point.subtitle = country
+                    }
+                    
+                    self.mapView.addAnnotation(point)
+                } else {
+                    print(String(describing: error))
+                }
+                
+                completion(placemarks?.first?.location?.coordinate, error)
+            }
+        }
+    }
+    
     
     @objc func clearButtonWasPressed() {
         startLocation.text = ""
@@ -172,12 +242,58 @@ class MainViewController: UIViewController {
         
         disableButton(button: clearButton)
         disableButton(button: goButton)
-            
+        
         clearMap()
     }
     
     @objc func goButtonWasPressed() {
+        guard
+            let first = startLocation.text,
+            let second = endLocation.text,
+            first != second
+        else {
+            return
+        }
         
+        clearMap()
+        
+        let group = DispatchGroup()
+        
+        group.enter()
+        getCoordinateFrom(address: first, completion: { [weak self] coords,_ in
+            if let coords = coords {
+                self?.coordinates.append(coords)
+            }
+            
+            group.leave()
+        })
+        
+        group.enter()
+        getCoordinateFrom(address: second, completion: { [weak self] coords,_ in
+            if let coords = coords {
+                self?.coordinates.append(coords)
+            }
+            group.leave()
+        })
+        
+        group.notify(queue: .main) {
+            DispatchQueue.main.async { [weak self] in
+                self?.buildPath()
+            }
+        }
+    }
+}
+
+extension MainViewController: MKMapViewDelegate {
+    func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+        if overlay.isKind(of: MKPolyline.self) {
+            let polylineRenderer = MKPolylineRenderer(overlay: overlay)
+            polylineRenderer.strokeColor = UIColor.blue
+            polylineRenderer.lineWidth = 3
+            
+            return polylineRenderer
+        }
+        return MKOverlayRenderer(overlay: overlay)
     }
 }
 
@@ -185,7 +301,7 @@ extension MainViewController: UITextFieldDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         textField.resignFirstResponder()
         
-        if (startLocation.hasText && endLocation.hasText) {
+        if (startLocation.hasText || endLocation.hasText) {
             goButtonWasPressed()
         }
         
@@ -195,13 +311,9 @@ extension MainViewController: UITextFieldDelegate {
     func textFieldDidEndEditing(_ textField: UITextField) {
         if (startLocation.hasText || endLocation.hasText) {
             enableButton(button: clearButton)
-        } else {
-            disableButton(button: clearButton)
-        }
-        
-        if (startLocation.hasText && endLocation.hasText) {
             enableButton(button: goButton)
         } else {
+            disableButton(button: clearButton)
             disableButton(button: goButton)
         }
     }
