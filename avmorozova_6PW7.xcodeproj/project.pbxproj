@@ -58,14 +58,12 @@
 		5D519042279D9A6A00ECD4BA /* avmorozova_6PW7 */ = {
 			isa = PBXGroup;
 			children = (
+				5DB2C75B27A4403200BB2E17 /* Model */,
 				5D57BC9527A1E18C00E754E6 /* View */,
 				5D519057279D9BB200ECD4BA /* Controllers */,
-				5D519043279D9A6A00ECD4BA /* AppDelegate.swift */,
-				5D519045279D9A6A00ECD4BA /* SceneDelegate.swift */,
 				5D51904C279D9A6B00ECD4BA /* Assets.xcassets */,
 				5D51904E279D9A6B00ECD4BA /* LaunchScreen.storyboard */,
 				5D519051279D9A6B00ECD4BA /* Info.plist */,
-				5D57BC9827A1EE7900E754E6 /* PinExtension.swift */,
 			);
 			path = avmorozova_6PW7;
 			sourceTree = "<group>";
@@ -84,6 +82,16 @@
 				5D57BC9627A1E1AF00E754E6 /* MapButton.swift */,
 			);
 			path = View;
+			sourceTree = "<group>";
+		};
+		5DB2C75B27A4403200BB2E17 /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				5D519043279D9A6A00ECD4BA /* AppDelegate.swift */,
+				5D519045279D9A6A00ECD4BA /* SceneDelegate.swift */,
+				5D57BC9827A1EE7900E754E6 /* PinExtension.swift */,
+			);
+			path = Model;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
